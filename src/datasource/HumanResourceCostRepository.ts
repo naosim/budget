@@ -1,10 +1,10 @@
 import {
-  Budget,
+  HumanResourceBudget,
   ContractType,
   HumanResourceCost,
   HumanResourceCosts,
-  Quarter,
-} from "./domain/HumanResourceCost.ts";
+} from "../domain/HumanResourceCost.ts";
+import { Quarter } from "../domain/Quarter.ts";
 
 export type HumanResourceCostRaw = {
   term: Quarter;
@@ -28,7 +28,7 @@ export class HumanResourceCostRepository {
       return {
         term: v.term,
         type: v.type,
-        budget: new Budget(total, invest),
+        budget: new HumanResourceBudget(total, invest),
         org: v.org,
       };
     }));
