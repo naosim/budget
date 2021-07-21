@@ -1,13 +1,15 @@
 class MemoMap {
+    methods;
+    memo;
     init;
     getKey;
     merge;
-    memo;
-    constructor(init1, getKey1, merge1, memo1 = new Map()){
-        this.init = init1;
-        this.getKey = getKey1;
-        this.merge = merge1;
+    constructor(methods, memo1 = new Map()){
+        this.methods = methods;
         this.memo = memo1;
+        this.init = methods.init;
+        this.getKey = methods.getKey;
+        this.merge = methods.merge;
     }
     add(e) {
         const k = this.getKey(e);
@@ -15,12 +17,19 @@ class MemoMap {
             this.memo.set(k, this.init(e));
         }
         this.memo.set(k, this.merge(e, this.memo.get(k)));
-        return new MemoMap(this.init, this.getKey, this.merge, this.memo);
+        return new MemoMap(this.methods, this.memo);
     }
     values() {
         return [
             ...this.memo.values()
         ];
+    }
+    map(callbackfn) {
+        const result = [];
+        this.memo.forEach((value, key, map)=>{
+            result.push(callbackfn(value, key, map));
+        });
+        return result;
     }
 }
 class QuarterBudgets {
@@ -55,10 +64,129 @@ class QuarterBudgets {
         return new QuarterBudgets(this.q1.add(other.q1), this.q2.add(other.q2), this.q3.add(other.q3), this.q4.add(other.q4));
     }
 }
+class HumanResourceBudget {
+    total;
+    invest;
+    investRate;
+    investPer;
+    constructor(total, invest1){
+        this.total = total;
+        this.invest = invest1;
+        this.investRate = total > 0 ? invest1 / total : 0;
+        this.investPer = Math.floor(this.investRate * 100);
+    }
+    add(other) {
+        return new HumanResourceBudget(this.total + other.total, this.invest + other.invest);
+    }
+    static empty = new HumanResourceBudget(0, 0);
+}
+const emptyQuarterBudgets = new QuarterBudgets(HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty);
+class AnnualOrgHumanResourceCost {
+    type;
+    org;
+    humanResourceCosts;
+    constructor(type1, org1, humanResourceCosts){
+        this.type = type1;
+        this.org = org1;
+        this.humanResourceCosts = humanResourceCosts;
+    }
+    get quarterBudgets() {
+        return this.humanResourceCosts.reduce((memo1, v)=>memo1.addQuarter(v.term, v.budget)
+        , emptyQuarterBudgets);
+    }
+    add(humanResourceCost) {
+        if (this.type !== humanResourceCost.type) {
+            throw new Error("type missmatch: " + humanResourceCost.type);
+        }
+        if (this.org !== humanResourceCost.org) {
+            throw new Error("org missmatch: " + humanResourceCost.org);
+        }
+        return new AnnualOrgHumanResourceCost(this.type, this.org, [
+            ...this.humanResourceCosts,
+            humanResourceCost, 
+        ]);
+    }
+}
+class AnnualOrgHumanResourceCosts {
+    memo;
+    constructor(memo2){
+        this.memo = memo2;
+    }
+    get quarterBudgets() {
+        return this.values().reduce((memo3, v)=>memo3.add(v.quarterBudgets)
+        , emptyQuarterBudgets);
+    }
+    static empty() {
+        return new AnnualOrgHumanResourceCosts(new MemoMap({
+            init: (e)=>new AnnualOrgHumanResourceCost(e.type, e.org, [])
+            ,
+            getKey: (e)=>e.org
+            ,
+            merge: (e, v)=>v.add(e)
+        }));
+    }
+    add(v) {
+        return new AnnualOrgHumanResourceCosts(this.memo.add(v));
+    }
+    values() {
+        return this.memo.values();
+    }
+}
+class AnnualContractTypeHumanResourceCost {
+    type;
+    annualOrgHumanResourceCost;
+    constructor(type2, annualOrgHumanResourceCost1){
+        this.type = type2;
+        this.annualOrgHumanResourceCost = annualOrgHumanResourceCost1;
+    }
+    get quarterBudgets() {
+        return this.annualOrgHumanResourceCost.reduce((memo3, v)=>memo3.add(v.quarterBudgets)
+        , emptyQuarterBudgets);
+    }
+    add(annualOrgHumanResourceCost) {
+        if (this.type !== annualOrgHumanResourceCost.type) {
+            throw new Error("type missmatch: " + annualOrgHumanResourceCost.type);
+        }
+        return new AnnualContractTypeHumanResourceCost(this.type, [
+            ...this.annualOrgHumanResourceCost,
+            annualOrgHumanResourceCost, 
+        ]);
+    }
+}
+class AnnualContractTypeHumanResourceCosts {
+    memo;
+    constructor(memo3){
+        this.memo = memo3;
+    }
+    get quarterBudgets() {
+        return this.values().reduce((memo4, v)=>memo4.add(v.quarterBudgets)
+        , emptyQuarterBudgets);
+    }
+    add(value) {
+        return new AnnualContractTypeHumanResourceCosts(this.memo.add(value));
+    }
+    static empty() {
+        return new AnnualContractTypeHumanResourceCosts(new MemoMap({
+            init: (e)=>new AnnualContractTypeHumanResourceCost(e.type, [])
+            ,
+            getKey: (e)=>e.type
+            ,
+            merge: (e, v)=>v.add(e)
+        }));
+    }
+    values() {
+        return this.memo.values();
+    }
+    map(callbackfn) {
+        return this.memo.map((v, k)=>{
+            return callbackfn(v, k);
+        });
+    }
+}
 class ProjectBudget {
     invest;
-    constructor(invest1){
-        this.invest = invest1;
+    constructor(invest2){
+        this.invest = invest2;
     }
     add(other) {
         return new ProjectBudget(this.invest + other.invest);
@@ -86,20 +214,14 @@ class AnnualProjectCost {
         ]);
     }
 }
-const emptyQuarterBudgets = new QuarterBudgets(ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty);
+const emptyQuarterBudgets1 = new QuarterBudgets(ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty);
 class AnnualProjectCosts {
     memo;
     quarterBudgets;
-    constructor(memo2, quarterBudgets2){
-        this.memo = memo2;
+    constructor(memo4, quarterBudgets2){
+        this.memo = memo4;
         this.quarterBudgets = quarterBudgets2;
     }
-    static init = (e)=>new AnnualProjectCost(e.pjId, e.client, emptyQuarterBudgets, [])
-    ;
-    static getKey = (e)=>e.pjId
-    ;
-    static merge = (e, v)=>v.add(e)
-    ;
     add(projectCost) {
         return new AnnualProjectCosts(this.memo.add(projectCost), this.quarterBudgets.addQuarter(projectCost.term, projectCost.budget));
     }
@@ -107,7 +229,13 @@ class AnnualProjectCosts {
         return this.memo.values();
     }
     static empty() {
-        return new AnnualProjectCosts(new MemoMap(AnnualProjectCosts.init, AnnualProjectCosts.getKey, AnnualProjectCosts.merge), emptyQuarterBudgets);
+        return new AnnualProjectCosts(new MemoMap({
+            init: (e)=>new AnnualProjectCost(e.pjId, e.client, emptyQuarterBudgets1, [])
+            ,
+            getKey: (e)=>e.pjId
+            ,
+            merge: (e, v)=>v.add(e)
+        }), emptyQuarterBudgets1);
     }
 }
 class AnnualClientCost {
@@ -132,97 +260,38 @@ class AnnualClientCost {
 class AnnualClientCosts {
     memo;
     quarterBudgets;
-    constructor(memo3, quarterBudgets4){
-        this.memo = memo3;
+    constructor(memo5, quarterBudgets4){
+        this.memo = memo5;
         this.quarterBudgets = quarterBudgets4;
     }
-    static init = (e)=>new AnnualClientCost(e.client, new QuarterBudgets(ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty), [])
-    ;
-    static getKey = (e)=>e.client
-    ;
-    static merge = (e, v)=>v.add(e)
-    ;
     add(v) {
         return new AnnualClientCosts(this.memo.add(v), this.quarterBudgets.add(v.quarterBudgets));
     }
     values() {
         return this.memo.values();
     }
+    map(callbackfn) {
+        return this.memo.map((v, k)=>{
+            return callbackfn(v, k);
+        });
+    }
     static empty() {
-        return new AnnualClientCosts(new MemoMap(AnnualClientCosts.init, AnnualClientCosts.getKey, AnnualClientCosts.merge), emptyQuarterBudgets);
-    }
-}
-class HumanResourceBudget {
-    total;
-    invest;
-    investRate;
-    investPer;
-    constructor(total, invest2){
-        this.total = total;
-        this.invest = invest2;
-        this.investRate = total > 0 ? invest2 / total : 0;
-        this.investPer = Math.floor(this.investRate * 100);
-    }
-    add(other) {
-        return new HumanResourceBudget(this.total + other.total, this.invest + other.invest);
-    }
-    static empty = new HumanResourceBudget(0, 0);
-}
-class HumanResourceCosts {
-    values;
-    constructor(values1){
-        this.values = values1;
-    }
-    convertToAnnualHumanResourceCostByOrg() {
-        const map = this.values.reduce((memo4, v)=>{
-            if (!memo4[v.org]) {
-                memo4[v.org] = {
-                    type: v.type,
-                    quarterBudgets: new QuarterBudgets(HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty),
-                    org: v.org
-                };
-            }
-            memo4[v.org].quarterBudgets = memo4[v.org].quarterBudgets.addQuarter(v.term, v.budget);
-            return memo4;
-        }, {
-        });
-        return new AnnualHumanResourceCosts(Object.values(map));
-    }
-}
-class AnnualHumanResourceCosts {
-    values;
-    quarterBudgets;
-    constructor(values2){
-        this.values = values2;
-        this.quarterBudgets = values2.reduce((memo4, v)=>memo4.add(v.quarterBudgets)
-        , new QuarterBudgets(HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty));
-    }
-    push(value) {
-        return new AnnualHumanResourceCosts([
-            ...this.values,
-            value
-        ]);
-    }
-    groupByContractType() {
-        return this.values.reduce((memo4, v)=>{
-            if (!memo4[v.type]) {
-                memo4[v.type] = new AnnualHumanResourceCosts([]);
-            }
-            memo4[v.type] = memo4[v.type].push(v);
-            return memo4;
-        }, {
-        });
+        return new AnnualClientCosts(new MemoMap({
+            init: (e)=>new AnnualClientCost(e.client, emptyQuarterBudgets1, [])
+            ,
+            getKey: (e)=>e.client
+            ,
+            merge: (e, v)=>v.add(e)
+        }), emptyQuarterBudgets1);
     }
 }
 class HumanResourceCostRepository {
-    raws;
     all;
     constructor(raws1){
-        this.raws = raws1;
         this.all = HumanResourceCostRepository.init(raws1);
     }
     static init(raws) {
-        return new HumanResourceCosts(raws.map((v)=>{
+        return raws.map((v)=>{
             const total1 = typeof v.total == "string" ? eval(v.total) : v.total;
             const invest3 = typeof v.invest == "string" ? eval(v.invest) : v.invest;
             return {
@@ -231,16 +300,17 @@ class HumanResourceCostRepository {
                 budget: new HumanResourceBudget(total1, invest3),
                 org: v.org
             };
-        }));
+        }).reduce((memo6, v)=>memo6.add(v)
+        , AnnualOrgHumanResourceCosts.empty()).values();
     }
 }
 class ProjectCostRepository {
     all;
     projectMap;
     constructor(raws2, projects){
-        this.projectMap = projects.reduce((memo4, v)=>{
-            memo4[v.id] = v;
-            return memo4;
+        this.projectMap = projects.reduce((memo6, v)=>{
+            memo6[v.id] = v;
+            return memo6;
         }, {
         });
         this.all = ProjectCostRepository.init(raws2, this.projectMap);
@@ -259,7 +329,7 @@ class ProjectCostRepository {
     findProject(projectId) {
         const result = this.projectMap[projectId];
         if (!result) {
-            throw new Error('project not found: ' + projectId);
+            throw new Error("project not found: " + projectId);
         }
         return result;
     }
@@ -275,7 +345,7 @@ function toHtml(ary2d) {
     return `<table><thead><tr>${head.map((v)=>"<th>" + v + "</th>"
     ).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
 }
-function toTotalTable(annualHumanResourceCosts) {
+function toTotalTable(annualContractTypeHumanResourceCost) {
     const toRow = (name, qb)=>[
             name,
             qb.q1.total,
@@ -295,12 +365,12 @@ function toTotalTable(annualHumanResourceCosts) {
             "4Q",
             "合計"
         ],
-        ...annualHumanResourceCosts.values.map((v)=>toRow(v.org, v.quarterBudgets)
+        ...annualContractTypeHumanResourceCost.annualOrgHumanResourceCost.map((v)=>toRow(v.org, v.quarterBudgets)
         ),
-        toRow("合計", annualHumanResourceCosts.quarterBudgets), 
+        toRow("合計", annualContractTypeHumanResourceCost.quarterBudgets), 
     ]);
 }
-function toInvestTable(annualHumanResourceCosts) {
+function toInvestTable(annualContractTypeHumanResourceCost) {
     const toRow = (name, qb)=>[
             name,
             ...[
@@ -322,9 +392,9 @@ function toInvestTable(annualHumanResourceCosts) {
             "4Q",
             "合計"
         ],
-        ...annualHumanResourceCosts.values.map((v)=>toRow(v.org, v.quarterBudgets)
+        ...annualContractTypeHumanResourceCost.annualOrgHumanResourceCost.map((v)=>toRow(v.org, v.quarterBudgets)
         ),
-        toRow("合計", annualHumanResourceCosts.quarterBudgets), 
+        toRow("合計", annualContractTypeHumanResourceCost.quarterBudgets), 
     ]);
 }
 function toAnnualClientCostTable(annualClientCost, projectCostRepository) {
@@ -343,7 +413,7 @@ function toAnnualClientCostTable(annualClientCost, projectCostRepository) {
     return toHtml([
         [
             "案件番号",
-            '案件名',
+            "案件名",
             "1Q",
             "2Q",
             "3Q",
@@ -356,8 +426,8 @@ function toAnnualClientCostTable(annualClientCost, projectCostRepository) {
             ], v.quarterBudgets)
         ),
         toRow([
-            '合計',
-            ''
+            "合計",
+            ""
         ], annualClientCost.quarterBudgets), 
     ]);
 }
@@ -388,7 +458,7 @@ function toAnnualClientCostTotalTable(annualClientCosts) {
             ], v.quarterBudgets)
         ),
         toRow([
-            '合計'
+            "合計"
         ], annualClientCosts.quarterBudgets), 
     ]);
 }
@@ -398,13 +468,13 @@ class DefaultColorFactory {
     colorMap = [
         [
             "#03A9F4",
-            '#29B6F6',
-            '#4FC3F7'
+            "#29B6F6",
+            "#4FC3F7"
         ],
         [
             "#00BCD4",
-            '#26C6DA',
-            '#4DD0E1'
+            "#26C6DA",
+            "#4DD0E1"
         ],
         [
             "#4CAF50",
@@ -414,8 +484,8 @@ class DefaultColorFactory {
         [
             "#FFEE58",
             "#FFF59D",
-            '#FFFDE7'
-        ]
+            "#FFFDE7"
+        ], 
     ];
     contractTypeIndex = {
     };
@@ -460,46 +530,49 @@ const getConfig = (datasets)=>{
         }
     };
 };
+const join2d = (ary2d)=>ary2d.map((v)=>v.join('\n')
+    ).join('\n')
+;
 function main1(humanResourceCostRaws, projectCostRaws, projects1) {
     const repository = new HumanResourceCostRepository(humanResourceCostRaws);
     const projectCostRepository = new ProjectCostRepository(projectCostRaws, projects1);
-    const list = repository.all.convertToAnnualHumanResourceCostByOrg().groupByContractType();
-    console.log(list);
-    const annualProjectCosts = projectCostRepository.all.reduce((memo4, v)=>memo4.add(v)
+    const annualOrgHumanResourceCosts = repository.all;
+    const annualContractTypeHumanResourceCosts = annualOrgHumanResourceCosts.reduce((memo6, v)=>memo6.add(v)
+    , AnnualContractTypeHumanResourceCosts.empty());
+    const annualProjectCosts = projectCostRepository.all.reduce((memo6, v)=>memo6.add(v)
     , AnnualProjectCosts.empty());
-    const annualClientCosts = annualProjectCosts.values().reduce((memo4, v)=>memo4.add(v)
+    const annualClientCosts = annualProjectCosts.values().reduce((memo6, v)=>memo6.add(v)
     , AnnualClientCosts.empty());
     console.log(annualClientCosts);
     var html = "";
+    html += "<h1>サマリ</h1>";
+    html += '<canvas id="summaryGraph"></canvas>';
     html += "<h1>人件費</h1>";
     html += '<canvas id="totalGraph"></canvas>';
     html += "<h1>投資</h1>";
     html += '<canvas id="investGraph"></canvas>';
     html += "<h2>人件費</h2>";
-    html += Object.keys(list).map((key)=>{
-        return [
+    html += join2d(annualContractTypeHumanResourceCosts.map((v, key)=>[
             `<h3>${key}</h3>`,
-            toTotalTable(list[key])
-        ].join("\n");
-    }).join("\n");
+            toTotalTable(v)
+        ]
+    ));
     html += "<h2>投資</h2>";
-    html += Object.keys(list).map((key)=>{
-        return [
+    html += join2d(annualContractTypeHumanResourceCosts.map((v, key)=>[
             `<h3>${key}</h3>`,
-            toInvestTable(list[key])
-        ].join("\n");
-    }).join("\n");
+            toInvestTable(v)
+        ]
+    ));
     html += "<h1>案件</h1>";
-    html += annualClientCosts.values().map((v)=>{
-        return [
+    html += join2d(annualClientCosts.map((v)=>[
             `<h3>${v.client}</h3>`,
             toAnnualClientCostTable(v, projectCostRepository)
-        ].join("\n");
-    }).join("\n");
+        ]
+    ));
     html += "<h2>依頼元合計</h2>";
     html += toAnnualClientCostTotalTable(annualClientCosts);
     const colorFactory = new DefaultColorFactory();
-    var totalDatasets = repository.all.convertToAnnualHumanResourceCostByOrg().values.map((v)=>{
+    var totalDatasets = repository.all.map((v)=>{
         const quarterBudgets5 = v.quarterBudgets;
         return {
             label: v.org,
@@ -512,7 +585,7 @@ function main1(humanResourceCostRaws, projectCostRaws, projects1) {
             backgroundColor: colorFactory.getColor(v.type, v.org)
         };
     });
-    var investDatasets = repository.all.convertToAnnualHumanResourceCostByOrg().values.map((v)=>{
+    var investDatasets = repository.all.map((v)=>{
         const quarterBudgets5 = v.quarterBudgets;
         return {
             label: v.org,
@@ -528,6 +601,64 @@ function main1(humanResourceCostRaws, projectCostRaws, projects1) {
     document.getElementById("app").innerHTML = html;
     new Chart(document.getElementById("totalGraph"), getConfig(totalDatasets));
     new Chart(document.getElementById("investGraph"), getConfig(investDatasets));
+    const labels = [
+        "1Q",
+        "2Q",
+        "3Q",
+        "4Q", 
+    ];
+    new Chart(document.getElementById("summaryGraph"), {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: "費用",
+                    data: [
+                        1,
+                        1,
+                        1,
+                        1, 
+                    ],
+                    backgroundColor: "red",
+                    stack: "人"
+                },
+                {
+                    label: "投資",
+                    data: [
+                        2,
+                        3,
+                        2,
+                        2, 
+                    ],
+                    backgroundColor: "blue",
+                    stack: "人"
+                },
+                {
+                    label: "基盤",
+                    data: [
+                        0.5,
+                        0.5,
+                        0.5,
+                        0.5, 
+                    ],
+                    backgroundColor: "yellow",
+                    stack: "案件"
+                }, 
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true
+                }
+            }
+        }
+    });
 }
 console.log(main1);
 export { main1 as main };

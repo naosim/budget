@@ -1,4 +1,9 @@
-import { Project, ProjectBudget, ProjectCost, ProjectId } from "../domain/ProjectCost.ts";
+import {
+  Project,
+  ProjectBudget,
+  ProjectCost,
+  ProjectId,
+} from "../domain/ProjectCost.ts";
 import { Quarter } from "../domain/Quarter.ts";
 
 // export const projects = [
@@ -14,36 +19,39 @@ import { Quarter } from "../domain/Quarter.ts";
 // ]
 
 export type ProjectCostRaw = {
-  term: Quarter,
-  invest: number | string,
-  pjId: ProjectId,
+  term: Quarter;
+  invest: number | string;
+  pjId: ProjectId;
 };
 
 export class ProjectCostRepository {
   readonly all: ProjectCost[];
-  private projectMap: {[key: string]: Project}
+  private projectMap: { [key: string]: Project };
   constructor(raws: ProjectCostRaw[], projects: Project[]) {
-    this.projectMap = projects.reduce((memo: {[key: string]: Project}, v) => {
+    this.projectMap = projects.reduce((memo: { [key: string]: Project }, v) => {
       memo[v.id] = v;
       return memo;
-    }, {})
+    }, {});
     this.all = ProjectCostRepository.init(raws, this.projectMap);
   }
-  private static init(raws: ProjectCostRaw[], projectMap: {[key: string]: Project}): ProjectCost[] {
+  private static init(
+    raws: ProjectCostRaw[],
+    projectMap: { [key: string]: Project },
+  ): ProjectCost[] {
     return raws.map((v) => {
       const invest = typeof v.invest == "string" ? eval(v.invest) : v.invest;
       return {
         term: v.term,
         budget: new ProjectBudget(invest),
         pjId: v.pjId,
-        client: projectMap[v.pjId].client
+        client: projectMap[v.pjId].client,
       };
     });
   }
   findProject(projectId: ProjectId): Project {
-    const result = this.projectMap[projectId]
-    if(!result) {
-      throw new Error('project not found: ' + projectId)
+    const result = this.projectMap[projectId];
+    if (!result) {
+      throw new Error("project not found: " + projectId);
     }
     return result;
   }

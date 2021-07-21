@@ -35,3 +35,4 @@ export class QuarterBudgets<T extends Add<T>> {
     );
   }
 }
+

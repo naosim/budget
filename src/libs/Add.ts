@@ -1,3 +1,3 @@
 export interface Add<T> {
-  add(other: T): T ;
+  add(other: T): T;
 }
