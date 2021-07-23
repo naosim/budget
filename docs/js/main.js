@@ -1,3 +1,27 @@
+class Lazy {
+    func;
+    value;
+    evaluated = false;
+    constructor(func1){
+        this.func = func1;
+    }
+    get() {
+        if (!this.evaluated) {
+            this.value = this.func();
+            this.evaluated = true;
+            console.log('lazy init');
+        } else {
+            console.log('lazy fast!!');
+        }
+        return this.value;
+    }
+    isEvaluated() {
+        return this.evaluated;
+    }
+    static of(func) {
+        return new Lazy(func);
+    }
+}
 class MemoMap {
     methods;
     memo;
@@ -80,7 +104,7 @@ class HumanResourceBudget {
     }
     static empty = new HumanResourceBudget(0, 0);
 }
-const emptyQuarterBudgets = new QuarterBudgets(HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty);
+const emptyQuarterBudgets1 = new QuarterBudgets(HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty, HumanResourceBudget.empty);
 class AnnualOrgHumanResourceCost {
     type;
     org;
@@ -90,9 +114,12 @@ class AnnualOrgHumanResourceCost {
         this.org = org1;
         this.humanResourceCosts = humanResourceCosts;
     }
-    get quarterBudgets() {
+    _quarterBudgets = Lazy.of(()=>{
         return this.humanResourceCosts.reduce((memo1, v)=>memo1.addQuarter(v.term, v.budget)
-        , emptyQuarterBudgets);
+        , emptyQuarterBudgets1);
+    });
+    get quarterBudgets() {
+        return this._quarterBudgets.get();
     }
     add(humanResourceCost) {
         if (this.type !== humanResourceCost.type) {
@@ -114,7 +141,7 @@ class AnnualOrgHumanResourceCosts {
     }
     get quarterBudgets() {
         return this.values().reduce((memo3, v)=>memo3.add(v.quarterBudgets)
-        , emptyQuarterBudgets);
+        , emptyQuarterBudgets1);
     }
     static empty() {
         return new AnnualOrgHumanResourceCosts(new MemoMap({
@@ -139,9 +166,12 @@ class AnnualContractTypeHumanResourceCost {
         this.type = type2;
         this.annualOrgHumanResourceCost = annualOrgHumanResourceCost1;
     }
-    get quarterBudgets() {
+    _quarterBudgets = Lazy.of(()=>{
         return this.annualOrgHumanResourceCost.reduce((memo3, v)=>memo3.add(v.quarterBudgets)
-        , emptyQuarterBudgets);
+        , emptyQuarterBudgets1);
+    });
+    get quarterBudgets() {
+        return this._quarterBudgets.get();
     }
     add(annualOrgHumanResourceCost) {
         if (this.type !== annualOrgHumanResourceCost.type) {
@@ -160,7 +190,7 @@ class AnnualContractTypeHumanResourceCosts {
     }
     get quarterBudgets() {
         return this.values().reduce((memo4, v)=>memo4.add(v.quarterBudgets)
-        , emptyQuarterBudgets);
+        , emptyQuarterBudgets1);
     }
     add(value) {
         return new AnnualContractTypeHumanResourceCosts(this.memo.add(value));
@@ -196,62 +226,77 @@ class ProjectBudget {
 class AnnualProjectCost {
     pjId;
     client;
-    quarterBudgets;
     projectCosts;
-    constructor(pjId, client1, quarterBudgets1, projectCosts){
+    constructor(pjId, client1, projectCosts){
         this.pjId = pjId;
         this.client = client1;
-        this.quarterBudgets = quarterBudgets1;
         this.projectCosts = projectCosts;
+    }
+    _quarterBudgets = Lazy.of(()=>{
+        return this.projectCosts.reduce((memo4, v)=>memo4.addQuarter(v.term, v.budget)
+        , emptyQuarterBudgets2);
+    });
+    get quarterBudgets() {
+        return this._quarterBudgets.get();
     }
     add(projectBudget) {
         if (this.pjId !== projectBudget.pjId) {
             throw new Error(`pjId不一致: ${this.pjId} != ${projectBudget.pjId}`);
         }
-        return new AnnualProjectCost(this.pjId, this.client, this.quarterBudgets.addQuarter(projectBudget.term, projectBudget.budget), [
+        return new AnnualProjectCost(this.pjId, this.client, [
             ...this.projectCosts,
             projectBudget
         ]);
     }
 }
-const emptyQuarterBudgets1 = new QuarterBudgets(ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty);
+const emptyQuarterBudgets2 = new QuarterBudgets(ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty, ProjectBudget.empty);
 class AnnualProjectCosts {
     memo;
-    quarterBudgets;
-    constructor(memo4, quarterBudgets2){
+    constructor(memo4){
         this.memo = memo4;
-        this.quarterBudgets = quarterBudgets2;
+    }
+    _quarterBudgets = Lazy.of(()=>{
+        return this.memo.values().reduce((memo5, v)=>memo5.add(v.quarterBudgets)
+        , emptyQuarterBudgets2);
+    });
+    get quarterBudgets() {
+        return this._quarterBudgets.get();
     }
     add(projectCost) {
-        return new AnnualProjectCosts(this.memo.add(projectCost), this.quarterBudgets.addQuarter(projectCost.term, projectCost.budget));
+        return new AnnualProjectCosts(this.memo.add(projectCost));
     }
     values() {
         return this.memo.values();
     }
     static empty() {
         return new AnnualProjectCosts(new MemoMap({
-            init: (e)=>new AnnualProjectCost(e.pjId, e.client, emptyQuarterBudgets1, [])
+            init: (e)=>new AnnualProjectCost(e.pjId, e.client, [])
             ,
             getKey: (e)=>e.pjId
             ,
             merge: (e, v)=>v.add(e)
-        }), emptyQuarterBudgets1);
+        }));
     }
 }
 class AnnualClientCost {
     client;
-    quarterBudgets;
     annualProjectCost;
-    constructor(client2, quarterBudgets3, annualProjectCost1){
+    constructor(client2, annualProjectCost1){
         this.client = client2;
-        this.quarterBudgets = quarterBudgets3;
         this.annualProjectCost = annualProjectCost1;
+    }
+    _quarterBudgets = Lazy.of(()=>{
+        return this.annualProjectCost.reduce((memo5, v)=>memo5.add(v.quarterBudgets)
+        , emptyQuarterBudgets2);
+    });
+    get quarterBudgets() {
+        return this._quarterBudgets.get();
     }
     add(annualProjectCost) {
         if (this.client !== annualProjectCost.client) {
             throw new Error(`client不一致: ${this.client} != ${annualProjectCost.client}`);
         }
-        return new AnnualClientCost(this.client, this.quarterBudgets.add(annualProjectCost.quarterBudgets), [
+        return new AnnualClientCost(this.client, [
             ...this.annualProjectCost,
             annualProjectCost
         ]);
@@ -259,13 +304,18 @@ class AnnualClientCost {
 }
 class AnnualClientCosts {
     memo;
-    quarterBudgets;
-    constructor(memo5, quarterBudgets4){
+    constructor(memo5){
         this.memo = memo5;
-        this.quarterBudgets = quarterBudgets4;
+    }
+    _quarterBudgets = Lazy.of(()=>{
+        return this.memo.values().reduce((memo6, v)=>memo6.add(v.quarterBudgets)
+        , emptyQuarterBudgets2);
+    });
+    get quarterBudgets() {
+        return this._quarterBudgets.get();
     }
     add(v) {
-        return new AnnualClientCosts(this.memo.add(v), this.quarterBudgets.add(v.quarterBudgets));
+        return new AnnualClientCosts(this.memo.add(v));
     }
     values() {
         return this.memo.values();
@@ -277,12 +327,12 @@ class AnnualClientCosts {
     }
     static empty() {
         return new AnnualClientCosts(new MemoMap({
-            init: (e)=>new AnnualClientCost(e.client, emptyQuarterBudgets1, [])
+            init: (e)=>new AnnualClientCost(e.client, [])
             ,
             getKey: (e)=>e.client
             ,
             merge: (e, v)=>v.add(e)
-        }), emptyQuarterBudgets1);
+        }));
     }
 }
 class HumanResourceCostRepository {
@@ -573,27 +623,27 @@ function main1(humanResourceCostRaws, projectCostRaws, projects1) {
     html += toAnnualClientCostTotalTable(annualClientCosts);
     const colorFactory = new DefaultColorFactory();
     var totalDatasets = repository.all.map((v)=>{
-        const quarterBudgets5 = v.quarterBudgets;
+        const quarterBudgets = v.quarterBudgets;
         return {
             label: v.org,
             data: [
-                quarterBudgets5.q1.total,
-                quarterBudgets5.q2.total,
-                quarterBudgets5.q3.total,
-                quarterBudgets5.q4.total, 
+                quarterBudgets.q1.total,
+                quarterBudgets.q2.total,
+                quarterBudgets.q3.total,
+                quarterBudgets.q4.total, 
             ],
             backgroundColor: colorFactory.getColor(v.type, v.org)
         };
     });
     var investDatasets = repository.all.map((v)=>{
-        const quarterBudgets5 = v.quarterBudgets;
+        const quarterBudgets = v.quarterBudgets;
         return {
             label: v.org,
             data: [
-                quarterBudgets5.q1.invest,
-                quarterBudgets5.q2.invest,
-                quarterBudgets5.q3.invest,
-                quarterBudgets5.q4.invest, 
+                quarterBudgets.q1.invest,
+                quarterBudgets.q2.invest,
+                quarterBudgets.q3.invest,
+                quarterBudgets.q4.invest, 
             ],
             backgroundColor: colorFactory.getColor(v.type, v.org)
         };

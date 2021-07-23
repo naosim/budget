@@ -1,4 +1,5 @@
 import { Add } from "../libs/Add.ts";
+import { Lazy } from "../libs/Lazy.ts";
 import { MemoMap } from "../libs/MemoMap.ts";
 import { Quarter } from "./Quarter.ts";
 import { QuarterBudgets } from "./QuarterBudgets.ts";
@@ -58,11 +59,12 @@ export class AnnualOrgHumanResourceCost {
     readonly org: string,
     readonly humanResourceCosts: HumanResourceCost[],
   ) {}
+
+  private _quarterBudgets = Lazy.of<QuarterBudgets<HumanResourceBudget>>(() => {
+    return this.humanResourceCosts.reduce((memo, v) => memo.addQuarter(v.term, v.budget), emptyQuarterBudgets)
+  })
   get quarterBudgets(): QuarterBudgets<HumanResourceBudget> {
-    return this.humanResourceCosts.reduce(
-      (memo, v) => memo.addQuarter(v.term, v.budget),
-      emptyQuarterBudgets,
-    );
+    return this._quarterBudgets.get()
   }
   add(humanResourceCost: HumanResourceCost) {
     if (this.type !== humanResourceCost.type) {
@@ -123,11 +125,12 @@ export class AnnualContractTypeHumanResourceCost {
     readonly type: ContractType,
     readonly annualOrgHumanResourceCost: AnnualOrgHumanResourceCost[],
   ) {}
+
+  private _quarterBudgets = Lazy.of<QuarterBudgets<HumanResourceBudget>>(() => {
+    return this.annualOrgHumanResourceCost.reduce((memo, v) => memo.add(v.quarterBudgets), emptyQuarterBudgets)
+  })
   get quarterBudgets(): QuarterBudgets<HumanResourceBudget> {
-    return this.annualOrgHumanResourceCost.reduce(
-      (memo, v) => memo.add(v.quarterBudgets),
-      emptyQuarterBudgets,
-    );
+    return this._quarterBudgets.get()
   }
 
   add(
