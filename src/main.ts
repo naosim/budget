@@ -22,6 +22,8 @@ import {
   ProjectCostRaw,
   ProjectCostRepository,
 } from "./datasource/ProjectCostRepository.ts";
+import { ColorFactory } from "./view/ColorFactory.ts";
+import { DefaultColorFactory } from "./view/DefaultColorFactory.ts";
 
 declare const Chart: any;
 declare const document: any;
@@ -120,40 +122,42 @@ function toAnnualClientCostTotalTable(
   ]);
 }
 
-interface ColorFactory {
-  getColor(contractType: ContractType, org: string): string;
-}
-
-class DefaultColorFactory implements ColorFactory {
-  readonly map: { [key: string]: { [key: string]: string } } = {};
-
-  // 足りない時はここから適当にとる
-  // https://materialui.co/colors
-  // 300,400,500あたりがよい
-  readonly colorMap = [
-    ["#03A9F4", "#29B6F6", "#4FC3F7"],
-    ["#00BCD4", "#26C6DA", "#4DD0E1"],
-    ["#4CAF50", "#66BB6A", "#81C784"],
-    ["#FFEE58", "#FFF59D", "#FFFDE7"],
+/**
+ * サマリグラフのデータセット作成
+ * @param annualContractTypeHumanResourceCosts
+ * @param annualClientCosts
+ * @returns
+ */
+function createSummaryGraphDatasets(
+  annualContractTypeHumanResourceCosts: AnnualContractTypeHumanResourceCosts,
+  annualClientCosts: AnnualClientCosts,
+) {
+  return [
+    {
+      label: "費用",
+      data: annualContractTypeHumanResourceCosts.quarterBudgets.toArray().map(
+        (q) => q.total - q.invest
+      ),
+      backgroundColor: "red",
+      stack: "人",
+    },
+    {
+      label: "投資",
+      data: annualContractTypeHumanResourceCosts.quarterBudgets.toArray().map(
+        (q) => q.invest
+      ),
+      backgroundColor: "blue",
+      stack: "人",
+    },
+    ...annualClientCosts.map((v) => {
+      return {
+        label: v.client,
+        data: v.quarterBudgets.toArray().map((q) => q.invest),
+        backgroundColor: "yellow",
+        stack: "案件",
+      };
+    }),
   ];
-  contractTypeIndex: { [key: string]: number } = {};
-  getColor(contractType: ContractType, org: string) {
-    if (this.contractTypeIndex[contractType] === undefined) {
-      this.contractTypeIndex[contractType] =
-        Object.keys(this.contractTypeIndex).length;
-    }
-    if (!this.map[contractType]) {
-      this.map[contractType] = {};
-    }
-    if (!this.map[contractType][org]) {
-      console.log(contractType, org);
-      this.map[contractType][org] = this
-        .colorMap[this.contractTypeIndex[contractType]][
-          Object.keys(this.map[contractType]).length
-        ];
-    }
-    return this.map[contractType][org];
-  }
 }
 
 /**
@@ -185,8 +189,7 @@ const getConfig = (datasets: any) => {
   };
 };
 
-const join2d = (ary2d: any[][]) => ary2d.map(v => v.join('\n')).join('\n')
-
+const join2d = (ary2d: any[][]) => ary2d.map((v) => v.join("\n")).join("\n");
 
 export function main(
   humanResourceCostRaws: HumanResourceCostRaw[],
@@ -223,11 +226,28 @@ export function main(
   html += "<h1>投資</h1>";
   html += '<canvas id="investGraph"></canvas>';
   html += "<h2>人件費</h2>";
-  html += join2d(annualContractTypeHumanResourceCosts.map((v, key) => [`<h3>${key}</h3>`, toTotalTable(v)]));
+  html += join2d(
+    annualContractTypeHumanResourceCosts.map((
+      v,
+      key,
+    ) => [`<h3>${key}</h3>`, toTotalTable(v)]),
+  );
   html += "<h2>投資</h2>";
-  html += join2d(annualContractTypeHumanResourceCosts.map((v, key) => [`<h3>${key}</h3>`, toInvestTable(v)]));
+  html += join2d(
+    annualContractTypeHumanResourceCosts.map((
+      v,
+      key,
+    ) => [`<h3>${key}</h3>`, toInvestTable(v)]),
+  );
   html += "<h1>案件</h1>";
-  html += join2d(annualClientCosts.map((v) => [`<h3>${v.client}</h3>`, toAnnualClientCostTable(v, projectCostRepository)]));
+  html += join2d(
+    annualClientCosts.map((
+      v,
+    ) => [
+      `<h3>${v.client}</h3>`,
+      toAnnualClientCostTable(v, projectCostRepository),
+    ]),
+  );
   html += "<h2>依頼元合計</h2>";
   html += toAnnualClientCostTotalTable(annualClientCosts);
 
@@ -236,12 +256,7 @@ export function main(
     const quarterBudgets = v.quarterBudgets;
     return {
       label: v.org,
-      data: [
-        quarterBudgets.q1.total,
-        quarterBudgets.q2.total,
-        quarterBudgets.q3.total,
-        quarterBudgets.q4.total,
-      ],
+      data: quarterBudgets.toArray().map((q) => q.total),
       backgroundColor: colorFactory.getColor(v.type, v.org),
     };
   });
@@ -250,12 +265,7 @@ export function main(
     const quarterBudgets = v.quarterBudgets;
     return {
       label: v.org,
-      data: [
-        quarterBudgets.q1.invest,
-        quarterBudgets.q2.invest,
-        quarterBudgets.q3.invest,
-        quarterBudgets.q4.invest,
-      ],
+      data: quarterBudgets.toArray().map((q) => q.invest),
       backgroundColor: colorFactory.getColor(v.type, v.org),
     };
   });
@@ -271,67 +281,12 @@ export function main(
     getConfig(investDatasets),
   );
 
-  const labels = [
-    "1Q",
-    "2Q",
-    "3Q",
-    "4Q",
-  ];
-
   new Chart(
     document.getElementById("summaryGraph"),
-    {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "費用",
-            data: [
-              1,
-              1,
-              1,
-              1,
-            ],
-            backgroundColor: "red",
-            stack: "人",
-          },
-          {
-            label: "投資",
-            data: [
-              2,
-              3,
-              2,
-              2,
-            ],
-            backgroundColor: "blue",
-            stack: "人",
-          },
-          {
-            label: "基盤",
-            data: [
-              0.5,
-              0.5,
-              0.5,
-              0.5,
-            ],
-            backgroundColor: "yellow",
-            stack: "案件",
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            stacked: true,
-          },
-          y: {
-            stacked: true,
-          },
-        },
-      },
-    },
+    getConfig(createSummaryGraphDatasets(
+      annualContractTypeHumanResourceCosts,
+      annualClientCosts,
+    )),
   );
 }
 console.log(main);

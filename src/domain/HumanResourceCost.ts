@@ -61,10 +61,13 @@ export class AnnualOrgHumanResourceCost {
   ) {}
 
   private _quarterBudgets = Lazy.of<QuarterBudgets<HumanResourceBudget>>(() => {
-    return this.humanResourceCosts.reduce((memo, v) => memo.addQuarter(v.term, v.budget), emptyQuarterBudgets)
-  })
+    return this.humanResourceCosts.reduce(
+      (memo, v) => memo.addQuarter(v.term, v.budget),
+      emptyQuarterBudgets,
+    );
+  });
   get quarterBudgets(): QuarterBudgets<HumanResourceBudget> {
-    return this._quarterBudgets.get()
+    return this._quarterBudgets.get();
   }
   add(humanResourceCost: HumanResourceCost) {
     if (this.type !== humanResourceCost.type) {
@@ -127,10 +130,13 @@ export class AnnualContractTypeHumanResourceCost {
   ) {}
 
   private _quarterBudgets = Lazy.of<QuarterBudgets<HumanResourceBudget>>(() => {
-    return this.annualOrgHumanResourceCost.reduce((memo, v) => memo.add(v.quarterBudgets), emptyQuarterBudgets)
-  })
+    return this.annualOrgHumanResourceCost.reduce(
+      (memo, v) => memo.add(v.quarterBudgets),
+      emptyQuarterBudgets,
+    );
+  });
   get quarterBudgets(): QuarterBudgets<HumanResourceBudget> {
-    return this._quarterBudgets.get()
+    return this._quarterBudgets.get();
   }
 
   add(

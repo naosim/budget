@@ -34,5 +34,12 @@ export class QuarterBudgets<T extends Add<T>> {
       this.q4.add(other.q4),
     );
   }
+  toArray(): T[] {
+    return [
+      this.q1,
+      this.q2,
+      this.q3,
+      this.q4,
+    ];
+  }
 }
-

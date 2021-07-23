@@ -24,6 +24,7 @@ export class HumanResourceCostRepository {
     raws: HumanResourceCostRaw[],
   ): AnnualOrgHumanResourceCost[] {
     // TODO: rawsはjsから呼ばれることを想定するため、型をチェックする
+
     return raws.map((v) => {
       const total = typeof v.total == "string" ? eval(v.total) : v.total;
       const invest = typeof v.invest == "string" ? eval(v.invest) : v.invest;

@@ -57,10 +57,13 @@ export class AnnualProjectCost {
     readonly projectCosts: ProjectCost[],
   ) {}
   private _quarterBudgets = Lazy.of<QuarterBudgets<ProjectBudget>>(() => {
-    return this.projectCosts.reduce((memo, v) => memo.addQuarter(v.term, v.budget), emptyQuarterBudgets)
-  })
+    return this.projectCosts.reduce(
+      (memo, v) => memo.addQuarter(v.term, v.budget),
+      emptyQuarterBudgets,
+    );
+  });
   get quarterBudgets(): QuarterBudgets<ProjectBudget> {
-    return this._quarterBudgets.get()
+    return this._quarterBudgets.get();
   }
   add(projectBudget: ProjectCost): AnnualProjectCost {
     if (this.pjId !== projectBudget.pjId) {
@@ -83,20 +86,23 @@ const emptyQuarterBudgets = new QuarterBudgets<ProjectBudget>(
 
 export class AnnualProjectCosts {
   constructor(
-    readonly memo: MemoMap<ProjectCost, ProjectId, AnnualProjectCost>
+    readonly memo: MemoMap<ProjectCost, ProjectId, AnnualProjectCost>,
   ) {
   }
 
   private _quarterBudgets = Lazy.of<QuarterBudgets<ProjectBudget>>(() => {
-    return this.memo.values().reduce((memo, v) => memo.add(v.quarterBudgets), emptyQuarterBudgets)
-  })
+    return this.memo.values().reduce(
+      (memo, v) => memo.add(v.quarterBudgets),
+      emptyQuarterBudgets,
+    );
+  });
   get quarterBudgets(): QuarterBudgets<ProjectBudget> {
-    return this._quarterBudgets.get()
+    return this._quarterBudgets.get();
   }
 
   add(projectCost: ProjectCost): AnnualProjectCosts {
     return new AnnualProjectCosts(
-      this.memo.add(projectCost)
+      this.memo.add(projectCost),
     );
   }
 
@@ -106,11 +112,10 @@ export class AnnualProjectCosts {
   static empty(): AnnualProjectCosts {
     return new AnnualProjectCosts(
       new MemoMap<ProjectCost, ProjectId, AnnualProjectCost>({
-        init: (e) =>
-          new AnnualProjectCost(e.pjId, e.client, []),
+        init: (e) => new AnnualProjectCost(e.pjId, e.client, []),
         getKey: (e) => e.pjId,
         merge: (e, v) => v.add(e),
-      })
+      }),
     );
   }
 }
@@ -124,10 +129,13 @@ export class AnnualClientCost {
     readonly annualProjectCost: AnnualProjectCost[],
   ) {}
   private _quarterBudgets = Lazy.of<QuarterBudgets<ProjectBudget>>(() => {
-    return this.annualProjectCost.reduce((memo, v) => memo.add(v.quarterBudgets), emptyQuarterBudgets)
-  })
+    return this.annualProjectCost.reduce(
+      (memo, v) => memo.add(v.quarterBudgets),
+      emptyQuarterBudgets,
+    );
+  });
   get quarterBudgets(): QuarterBudgets<ProjectBudget> {
-    return this._quarterBudgets.get()
+    return this._quarterBudgets.get();
   }
   add(annualProjectCost: AnnualProjectCost): AnnualClientCost {
     if (this.client !== annualProjectCost.client) {
@@ -144,15 +152,18 @@ export class AnnualClientCost {
 
 export class AnnualClientCosts {
   constructor(
-    readonly memo: MemoMap<AnnualProjectCost, string, AnnualClientCost>,  ) {
+    readonly memo: MemoMap<AnnualProjectCost, string, AnnualClientCost>,
+  ) {
   }
   private _quarterBudgets = Lazy.of<QuarterBudgets<ProjectBudget>>(() => {
-    return this.memo.values().reduce((memo, v) => memo.add(v.quarterBudgets), emptyQuarterBudgets)
-  })
+    return this.memo.values().reduce(
+      (memo, v) => memo.add(v.quarterBudgets),
+      emptyQuarterBudgets,
+    );
+  });
   get quarterBudgets(): QuarterBudgets<ProjectBudget> {
-    return this._quarterBudgets.get()
+    return this._quarterBudgets.get();
   }
-  
 
   add(v: AnnualProjectCost): AnnualClientCosts {
     return new AnnualClientCosts(this.memo.add(v));
@@ -178,7 +189,7 @@ export class AnnualClientCosts {
         init: (e) => new AnnualClientCost(e.client, []),
         getKey: (e) => e.client,
         merge: (e, v) => v.add(e),
-      })
+      }),
     );
   }
 }
