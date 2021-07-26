@@ -134,19 +134,19 @@ function createSummaryGraphDatasets(
 ) {
   return [
     {
-      label: "費用",
-      data: annualContractTypeHumanResourceCosts.quarterBudgets.toArray().map(
-        (q) => q.total - q.invest
-      ),
-      backgroundColor: "red",
-      stack: "人",
-    },
-    {
       label: "投資",
       data: annualContractTypeHumanResourceCosts.quarterBudgets.toArray().map(
         (q) => q.invest
       ),
       backgroundColor: "blue",
+      stack: "人",
+    },
+    {
+      label: "費用",
+      data: annualContractTypeHumanResourceCosts.quarterBudgets.toArray().map(
+        (q) => q.total - q.invest
+      ),
+      backgroundColor: "red",
       stack: "人",
     },
     ...annualClientCosts.map((v) => {
